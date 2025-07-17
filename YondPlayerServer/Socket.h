@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string>
+#include <fcntl.h>
 
 class Buffer :public std::string {
 public:
@@ -20,7 +21,8 @@ public:
 
 enum SockAttr {
 	SOCK_ISSERVER = 1,	//是否服务器	1是 0客户端
-	SOCK_ISBLOCK = 2,	//受否阻塞	1表示阻塞 0非阻塞
+	SOCK_ISNONBLOCK = 2,	//受否阻塞	1表示非阻塞 0阻塞
+	SOCK_ISUDP = 4,		//是否UDP，1表示UDP，0表示TCP
 };
 
 class CSockParam {
@@ -29,7 +31,7 @@ public:
 		bzero(&addr_in, sizeof(addr_in));
 		bzero(&addr_un, sizeof(addr_un));
 		port = -1;
-		attr = 0;
+		attr = 0;			//默认客户端，阻塞，tcp
 	}
 	CSockParam(const Buffer& ip, short port, int attr) {
 		this->ip = ip;
@@ -79,14 +81,13 @@ public:
 
 class CSocketBase {
 public:
+	CSocketBase() {
+		m_socket = -1;
+		m_status = 0;		//unfinish init
+	}
 	//传递析构操作
 	virtual ~CSocketBase() {
-		m_status = 3;
-		if (m_socket != -1) {
-			int fd = m_socket;
-			m_socket = -1;
-			close(fd);
-		}
+		Close();
 	}
 public:
 	//初始化 服务器 套接字创建 bind listen   客户端 套接字创建
@@ -96,10 +97,116 @@ public:
 
 	virtual int Send(const Buffer& data) = 0;
 	virtual int Recv(Buffer& data) = 0;
-	virtual int Close() = 0;
+	virtual int Close() {
+		m_status = 3;
+		if (m_socket != -1) {
+			int fd = m_socket;
+			m_socket = -1;
+			close(fd);
+		}
+	}
 protected:
 	//套接字描述符，默认是 -1
 	int m_socket;
 	//0未初始化 1初始化完成 2连接完成 3已经关闭
 	int m_status;
+	CSockParam m_param;
+};
+
+class CLocalSocket : public CSocketBase {
+	CLocalSocket() : CSocketBase() {}
+	CLocalSocket(int sock) : CSocketBase() {
+		m_socket = sock;
+	}
+	//传递析构操作
+	virtual ~CLocalSocket() {
+		Close();
+	}
+public:
+	//初始化 服务器 套接字创建 bind listen   客户端 套接字创建
+	virtual int Init(const CSockParam& param) {
+		if (m_status != 0) return -1;
+		m_param = param;
+		int type = (m_param.attr & SOCK_ISUDP) ? SOCK_DGRAM : SOCK_STREAM;
+		if(m_socket == -1) 
+			m_socket = socket(PF_LOCAL, SOCK_STREAM, 0);
+		if (m_socket == -1) return -2;
+		int ret = 0;
+		if (m_param.attr & SOCK_ISSERVER) {
+			ret = bind(m_socket, m_param.addrun(), sizeof(sockaddr_un));
+			if (ret == -1) return -3;
+			ret = listen(m_socket, 32);
+			if (ret == -1) return -4;
+		}
+		if (m_param.attr & SOCK_ISNONBLOCK) {
+			int option = fcntl(m_socket, F_GETFL);
+			if (option == -1) return -5;
+			option |= O_NONBLOCK;
+			ret = fcntl(m_socket, F_SETFL, option);
+			if (ret == -1) return -6;
+		}
+		m_status = 1;
+		return 0;
+	}
+	//连接  服务器 accept 客户端 connect   对udp这里可以忽略
+	virtual int Link(CSocketBase** pClient = NULL) {
+		if (m_status <= 0) return -1;
+		int ret = 0;
+		if (m_param.attr & SOCK_ISSERVER) {
+			if (pClient == NULL) return -2;
+			CSockParam param;
+			socklen_t len = sizeof(sockaddr_un);
+			int fd = accept(m_socket, param.addrun(), &len);
+			if (fd == -1) return -3;
+			*pClient = new CLocalSocket();
+			if (*pClient == NULL) return -4;
+			ret = (*pClient)->Init(param);
+			if (ret != 0) {
+				delete (*pClient);
+				*pClient = NULL;
+				return -5;
+			}
+		}
+		else {
+			ret = connect(m_socket, m_param.addrun(), sizeof(sockaddr_un));
+			if (ret != 0) return -6;
+		}
+		m_status = 2;
+		return 0;
+	}
+
+	
+	virtual int Send(const Buffer& data) {
+		if (m_status < 2) return -1;
+		ssize_t index = 0;
+		while (index < (ssize_t)data.size()) {
+			ssize_t len = write(m_socket, (char*)data + index, data.size() - index);
+			if (len == 0) return -2;
+			if (len < 0) return -3;
+			index += len;
+		}
+		return 0;
+	}
+
+	// >0 success recv <0 recv failed =0 recv data empty
+	virtual int Recv(Buffer& data) {
+		if (m_status < 2) return -1;
+		ssize_t len = read(m_socket, data, data.size());
+		if (len > 0) {
+			data.resize(len);
+			return len;
+		}
+		if (len < 0) {
+			if (errno == EINTR || (errno == EAGAIN)) {
+				data.clear();
+				return 0;		//none data recived
+			}
+			return -2;	//error
+		}
+		return -3;	//socket is closed
+	}
+	virtual int Close() {
+		return CSocketBase::Close();
+	}
+private:
 };
