@@ -82,11 +82,16 @@
   <ItemGroup>
     <ClInclude Include="Epoll.h" />
     <ClInclude Include="Function.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="Process.h" />
     <ClInclude Include="Socket.h" />
     <ClInclude Include="Thread.h" />
   </ItemGroup>
-  <ItemDefinitionGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG_</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>
