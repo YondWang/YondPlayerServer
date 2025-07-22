@@ -7,12 +7,11 @@
 #include <string>
 #include <fcntl.h>
 
-class Buffer :public std::string {
+class Buffer :public std::string 
+{
 public:
 	Buffer() :std::string() {}
-	Buffer(size_t size) :std::string() {
-		resize(size);
-	}
+	Buffer(size_t size) :std::string() { resize(size); }
 	Buffer(const std::string& str) : std::string(str) {}
 	Buffer(const char* str) : std::string(str) {}
 	operator char* () { return (char*)c_str(); }
@@ -106,6 +105,7 @@ public:
 			m_socket = -1;
 			close(fd);
 		}
+		return 0;
 	}
 	virtual operator int() { return m_socket; }
 	virtual operator int() const { return m_socket; }
@@ -200,7 +200,7 @@ public:
 		ssize_t len = read(m_socket, data, data.size());
 		if (len > 0) {
 			data.resize(len);
-			return len;
+			return (int)len;
 		}
 		if (len < 0) {
 			if (errno == EINTR || (errno == EAGAIN)) {
