@@ -103,10 +103,6 @@ public:
         cmsg->cmsg_type = SCM_RIGHTS;
         msg.msg_control = cmsg;
         msg.msg_controllen = CMSG_LEN(sizeof(int));
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        msg.msg_flags = 0;
-
         ssize_t ret = recvmsg(m_pipes[0], &msg, 0);
         if (ret == -1) {
             free(cmsg);

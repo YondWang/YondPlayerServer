@@ -101,6 +101,7 @@ public:
 	virtual int Close() {
 		m_status = 3;
 		if (m_socket != -1) {
+			unlink(m_param.ip);
 			int fd = m_socket;
 			m_socket = -1;
 			close(fd);
@@ -134,8 +135,10 @@ public:
 		if (m_status != 0) return -1;
 		m_param = param;
 		int type = (m_param.attr & SOCK_ISUDP) ? SOCK_DGRAM : SOCK_STREAM;
-		if(m_socket == -1) 
-			m_socket = socket(PF_LOCAL, SOCK_STREAM, 0);
+		if (m_socket == -1)
+			m_socket = socket(PF_LOCAL, type, 0);
+		else
+			m_status = 2;
 		if (m_socket == -1) return -2;
 		int ret = 0;
 		if (m_param.attr & SOCK_ISSERVER) {
@@ -151,12 +154,13 @@ public:
 			ret = fcntl(m_socket, F_SETFL, option);
 			if (ret == -1) return -6;
 		}
-		m_status = 1;
+		if(m_status == 0)
+			m_status = 1;
 		return 0;
 	}
 	//连接  服务器 accept 客户端 connect   对udp这里可以忽略
 	virtual int Link(CSocketBase** pClient = NULL) {
-		if (m_status <= 0) return -1;
+		if (m_status <= 0 || m_socket == -1) return -1;
 		int ret = 0;
 		if (m_param.attr & SOCK_ISSERVER) {
 			if (pClient == NULL) return -2;
@@ -164,7 +168,7 @@ public:
 			socklen_t len = sizeof(sockaddr_un);
 			int fd = accept(m_socket, param.addrun(), &len);
 			if (fd == -1) return -3;
-			*pClient = new CLocalSocket();
+			*pClient = new CLocalSocket(fd);
 			if (*pClient == NULL) return -4;
 			ret = (*pClient)->Init(param);
 			if (ret != 0) {
@@ -183,7 +187,7 @@ public:
 
 	
 	virtual int Send(const Buffer& data) {
-		if (m_status < 2) return -1;
+		if ((m_status < 2) || (m_socket == -1)) return -1;
 		ssize_t index = 0;
 		while (index < (ssize_t)data.size()) {
 			ssize_t len = write(m_socket, (char*)data + index, data.size() - index);

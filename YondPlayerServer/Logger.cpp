@@ -24,6 +24,7 @@ LogInfo::LogInfo(const char* file, int line, const char* func,
 		m_buf += buf;
 		free(buf);
 	}
+	m_buf += "\n";
 	va_end(ap);
 }
 
@@ -36,12 +37,12 @@ LogInfo::LogInfo(const char* file, int line, const char* func,
 	};
 	char* buf = NULL;
 	int count = asprintf(&buf, "%s(%d):[%s][%s]<%d_%d>(%s) ",
-		file, line, sLevel[level], CLoggerServer::GetTimeStr(), pid, tid, func);
+		file, line, sLevel[level],
+		CLoggerServer::GetTimeStr(), pid, tid, func);
 	if (count > 0) {
 		m_buf = buf;
 		free(buf);
 	}
-	else return;
 }
 
 LogInfo::LogInfo(const char* file, int line, const char* func,
@@ -99,6 +100,7 @@ LogInfo::LogInfo(const char* file, int line, const char* func,
 LogInfo::~LogInfo()
 {
 	if (bAuto) {
+		m_buf += "\n";
 		CLoggerServer::Trace(*this);
 	}
 }
