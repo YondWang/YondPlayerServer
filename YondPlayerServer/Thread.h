@@ -24,14 +24,14 @@ public:
 	~CThread() {}
 public:
 	CThread(const CThread&) = delete;
-	CThread operator= (const CThread&) = delete;
+	CThread operator=(const CThread&) = delete;
 
 	int Start() {
 		pthread_attr_t attr;
 		int ret = 0;
 		ret = pthread_attr_init(&attr);
 		if (ret != 0) return -1;
-		ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 		if (ret != 0) return -2;
 		/*ret = pthread_attr_setscope(&attr, PTHREAD_SCOPE_PROCESS);
 		if (ret != 0) return -3;*/

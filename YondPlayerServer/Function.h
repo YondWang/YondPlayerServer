@@ -6,7 +6,6 @@
 
 class CFunctionBase {
 public:
-    CFunctionBase() = default;
     virtual ~CFunctionBase() {}
     virtual int operator()() = 0;
 };

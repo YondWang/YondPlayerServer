@@ -14,7 +14,7 @@ enum LogLevel
 	LOG_DEBUG,
 	LOG_WARNING,
 	LOG_ERROR,
-	LOG_FATIAL
+	LOG_FATAL
 };
 
 class LogInfo {
@@ -71,10 +71,10 @@ public:
 		if (ret != 0) return -3;
 		m_server = new CLocalSocket();
 		if (m_server == NULL) {
-			m_epoll.Close();
+			Close();
 			return -4;
 		}
-		ret = m_server->Init(CSockParam("./log/server.sock", SOCK_ISSERVER));
+		ret = m_server->Init(CSockParam("./log/server.sock", (int)SOCK_ISSERVER));
 		if (ret != 0) {
 			Close();
 			return -5;
@@ -87,6 +87,7 @@ public:
 			return -6;
 		}
 		ret = m_thread.Start();
+		printf("%s(%d):[%s]ret=%d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 		if (ret != 0) {
 			printf("%s(%d):<%s> pid=%d errno:%d msg:%s ret:%d\n",
 				__FILE__, __LINE__, __FUNCTION__, getpid(), errno, strerror(errno), ret);
@@ -161,15 +162,18 @@ private:
 		std::map<int, CSocketBase*> mapClients;
 		while ((m_thread.isValid()) && (m_epoll != -1) && (m_server != NULL)) {
 			ssize_t ret = m_epoll.WaitEvents(events, 1);
-			printf("%s(%d):[%s] %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+			//printf("%s(%d):[%s] %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 			if (ret < 0) break;
 			if (ret > 0) {
+				printf("%s(%d):[%s] %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 				ssize_t i = 0;
 				for (; i < ret; i++) {
+					printf("%s(%d):[%s] %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 					if (events[i].events & EPOLLERR) {
 						break;
 					}
 					else if (events[i].events & EPOLLIN) {
+						printf("%s(%d):[%s] %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 						if (events[i].data.ptr == m_server) {
 							CSocketBase* pClient = NULL;
 							int r = m_server->Link(&pClient);
@@ -184,11 +188,12 @@ private:
 								continue;
 							}
 							auto it = mapClients.find(*pClient);
-							if (it->second != NULL) {
-								delete it->second;
+							if (it != mapClients.end()) {
+								if(it->second) delete it->second;
 								printf("%s(%d):[%s] delete\n", __FILE__, __LINE__, __FUNCTION__);
 							}
 							mapClients[*pClient] = pClient;
+							printf("%s(%d):[%s]ret=%d\n", __FILE__, __LINE__, __FUNCTION__, r);
 						}
 						else {
 							printf("%s(%d):[%s]events[i].data.ptr=%p\n", __FILE__, __LINE__, __FUNCTION__, events[i].data.ptr);
@@ -235,19 +240,19 @@ private:
 #define TRACED(...) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_DEBUG, __VA_ARGS__))
 #define TRACEW(...) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_WARNING, __VA_ARGS__))
 #define TRACEE(...) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_ERROR, __VA_ARGS__))
-#define TRACEF(...) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_FATIAL, __VA_ARGS__))
+#define TRACEF(...) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_FATAL, __VA_ARGS__))
 
 #define LOGI LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_INFO)
 #define LOGD LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_DEBUG)
 #define LOGW LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_WARNING)
 #define LOGE LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_ERROR)
-#define LOGF LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_FATIAL)
+#define LOGF LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_FATAL)
 
 //output memory
 #define DUMPI(data, size) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_INFO, data, size))
 #define DUMPD(data, size) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_DEBUG, data, size))
-#define DUMPW(data, size) CLoggerServer::TraceLogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_WARNING, data, size))
-#define DUMPE(data, size) CLoggerServer::TraceLogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_ERROR, data, size))
-#define DUMPF(data, size) CLoggerServer::TraceLogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_FATIAL, data, size))
+#define DUMPW(data, size) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_WARNING, data, size))
+#define DUMPE(data, size) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_ERROR, data, size))
+#define DUMPF(data, size) CLoggerServer::Trace(LogInfo(__FILE__, __LINE__, __FUNCTION__, getpid(), pthread_self(), LOG_FATAL, data, size))
 
 #endif // !TRACE

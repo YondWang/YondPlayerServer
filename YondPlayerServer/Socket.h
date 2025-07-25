@@ -200,7 +200,7 @@ public:
 
 	// >0 success recv <0 recv failed =0 recv data empty
 	virtual int Recv(Buffer& data) {
-		if (m_status < 2) return -1;
+		if (m_status < 2 || m_socket == -1) return -1;
 		ssize_t len = read(m_socket, data, data.size());
 		if (len > 0) {
 			data.resize(len);

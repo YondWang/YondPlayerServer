@@ -79,7 +79,7 @@ public:
 		EPEvents evs(EVENT_SIZE);
 		int ret = epoll_wait(m_epoll, evs.data(), (int)evs.size(), timeout);
 		if (ret == -1) {
-			if ((errno = EINTR) || (errno == EAGAIN)) {
+			if ((errno == EINTR) || (errno == EAGAIN)) {
 				return 0;
 			}
 			return -2;
