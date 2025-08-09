@@ -14,6 +14,10 @@ public:
 	Buffer(size_t size) :std::string() { resize(size); }
 	Buffer(const std::string& str) : std::string(str) {}
 	Buffer(const char* str) : std::string(str) {}
+	Buffer(const char* str, size_t length) : std::string(str) {
+		resize(length);
+		memcpy((char*)c_str(), str, length);
+	}
 	operator char* () { return (char*)c_str(); }
 	operator char* () const { return (char*)c_str(); }
 	operator const char* () const { return c_str(); }
@@ -24,6 +28,7 @@ enum SockAttr {
 	SOCK_ISSERVER = 1,	//是否服务器	1是 0客户端
 	SOCK_ISNONBLOCK = 2,	//受否阻塞	1表示非阻塞 0阻塞
 	SOCK_ISUDP = 4,		//是否UDP，1表示UDP，0表示TCP
+	SOCK_ISIP = 8,		//是否为IP协议，1表示IP协议，0表示本地套接字
 };
 
 class CSockParam {
@@ -41,6 +46,13 @@ public:
 		addr_in.sin_family = AF_INET;
 		addr_in.sin_port = port;
 		addr_in.sin_addr.s_addr = inet_addr(ip);
+	}
+	CSockParam(const sockaddr_in* addrin, int attr) {
+		this->ip = ip;
+		this->port = port;
+		this->attr = attr;
+		memcpy(&addr_in, addrin, sizeof(addr_in));
+
 	}
 	CSockParam(const Buffer& path, int attr) {
 		ip = path;
@@ -101,7 +113,9 @@ public:
 	virtual int Close() {
 		m_status = 3;
 		if (m_socket != -1) {
-			unlink(m_param.ip);
+			if ((m_param.attr & SOCK_ISSERVER) && 
+				((m_param.attr & SOCK_ISIP) == 0))
+				unlink(m_param.ip);
 			int fd = m_socket;
 			m_socket = -1;
 			close(fd);
@@ -110,6 +124,8 @@ public:
 	}
 	virtual operator int() { return m_socket; }
 	virtual operator int() const { return m_socket; }
+	virtual operator const sockaddr_in* () const { return &m_param.addr_in; }
+	virtual operator sockaddr_in* () { return &m_param.addr_in; }
 
 protected:
 	//套接字描述符，默认是 -1
@@ -119,14 +135,13 @@ protected:
 	CSockParam m_param;
 };
 
-class CLocalSocket : public CSocketBase {
-public:
-	CLocalSocket() : CSocketBase() {}
-	CLocalSocket(int sock) : CSocketBase() {
+class CSocket : public CSocketBase {
+public:	CSocket() : CSocketBase() {}
+	CSocket(int sock) : CSocketBase() {
 		m_socket = sock;
 	}
 	//传递析构操作
-	virtual ~CLocalSocket() {
+	virtual ~CSocket() {
 		Close();
 	}
 public:
@@ -135,14 +150,25 @@ public:
 		if (m_status != 0) return -1;
 		m_param = param;
 		int type = (m_param.attr & SOCK_ISUDP) ? SOCK_DGRAM : SOCK_STREAM;
-		if (m_socket == -1)
-			m_socket = socket(PF_LOCAL, type, 0);
+		if (m_socket == -1) {
+			if (param.attr & SOCK_ISIP) {
+				m_socket = socket(PF_INET, type, 0);
+			}
+			else {
+				m_socket = socket(PF_LOCAL, type, 0);
+			}
+		}
 		else
 			m_status = 2;
 		if (m_socket == -1) return -2;
 		int ret = 0;
 		if (m_param.attr & SOCK_ISSERVER) {
-			ret = bind(m_socket, m_param.addrun(), sizeof(sockaddr_un));
+			if (param.attr & SOCK_ISIP) {
+				ret = bind(m_socket, m_param.addrin(), sizeof(sockaddr_in));
+			}
+			else {
+				ret = bind(m_socket, m_param.addrun(), sizeof(sockaddr_un));
+			}
 			if (ret == -1) return -3;
 			ret = listen(m_socket, 32);
 			if (ret == -1) return -4;
@@ -165,10 +191,19 @@ public:
 		if (m_param.attr & SOCK_ISSERVER) {
 			if (pClient == NULL) return -2;
 			CSockParam param;
-			socklen_t len = sizeof(sockaddr_un);
-			int fd = accept(m_socket, param.addrun(), &len);
+			int fd = -1;
+			socklen_t len = 0;
+			if (m_param.attr & SOCK_ISIP) {
+				param.attr |= SOCK_ISIP;
+				len = sizeof(sockaddr_in);
+				fd = accept(m_socket, param.addrin(), &len);
+			}
+			else {
+				len = sizeof(sockaddr_un);
+				fd = accept(m_socket, param.addrun(), &len);
+			}
 			if (fd == -1) return -3;
-			*pClient = new CLocalSocket(fd);
+			*pClient = new CSocket(fd);
 			if (*pClient == NULL) return -4;
 			ret = (*pClient)->Init(param);
 			if (ret != 0) {
@@ -178,7 +213,10 @@ public:
 			}
 		}
 		else {
-			ret = connect(m_socket, m_param.addrun(), sizeof(sockaddr_un));
+			if (m_param.attr & SOCK_ISIP) 
+				ret = connect(m_socket, m_param.addrin(), sizeof(sockaddr_in));
+			else
+				ret = connect(m_socket, m_param.addrun(), sizeof(sockaddr_un));
 			if (ret != 0) return -6;
 		}
 		m_status = 2;

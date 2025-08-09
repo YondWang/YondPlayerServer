@@ -1,6 +1,7 @@
 ﻿#include "Process.h"
 #include "Logger.h"
 #include "ThreadPool.h"
+#include "YondPlayerServer.h"
 
 int CreateLogServer(CProcess* proc) {
 	//printf("%s(%d):<%s> pid = %d\n", __FILE__, __LINE__, __FUNCTION__, getpid());
@@ -48,8 +49,7 @@ int LogTest() {
 	return 0;
 }
 
-int main()
-{
+int old_test() {
 	//CProcess::SwitchDeamon();       //turn to Deamon process
 
 	CProcess proclog, procclient;
@@ -104,6 +104,25 @@ int main()
 
 	proclog.SendFD(-1);
 	(void)getchar();
+
+	return 0;
+}
+
+int main()
+{
+	int ret = 0;
+	CProcess proclog;
+	ret = proclog.SetEntryFunction(CreateLogServer, &proclog);
+	ret = proclog.CreateSubProcess();
+	ERR_RETURN(ret, -1);
+
+	CYondPlayerServer business(2);
+	CServer server;
+	ret = server.Init(&business);
+	ERR_RETURN(ret, -2);
+	ret = server.Run();
+	ERR_RETURN(ret, -3);
+
 
 	return 0;
 }

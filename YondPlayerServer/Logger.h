@@ -69,7 +69,7 @@ public:
 		}
 		int ret = m_epoll.Create(1);
 		if (ret != 0) return -3;
-		m_server = new CLocalSocket();
+		m_server = new CSocket();
 		if (m_server == NULL) {
 			Close();
 			return -4;
@@ -111,7 +111,7 @@ public:
 	//for not log thread and process
 	static void Trace(const LogInfo& info) {
 		int ret = 0;
-		static thread_local CLocalSocket client;
+		static thread_local CSocket client;
 		if (client == -1) {
 			ret = client.Init(CSockParam("./log/server.sock", 0));
 			if (ret != 0) {
@@ -161,8 +161,8 @@ private:
 		EPEvents events;
 		std::map<int, CSocketBase*> mapClients;
 		while ((m_thread.isValid()) && (m_epoll != -1) && (m_server != NULL)) {
-			ssize_t ret = m_epoll.WaitEvents(events, 1);
-			//printf("%s(%d):[%s] %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+			ssize_t ret = m_epoll.WaitEvents(events, 1000);
+			printf("%s(%d):[%s] %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 			if (ret < 0) break;
 			if (ret > 0) {
 				printf("%s(%d):[%s] %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
@@ -203,8 +203,8 @@ private:
 								int r = pClient->Recv(data);
 								printf("%s(%d):[%s]events[i].data.ptr=%p\n", __FILE__, __LINE__, __FUNCTION__, events[i].data.ptr);
 								if (r <= 0) {
-									delete pClient;
 									mapClients[*pClient] = NULL;
+									delete pClient;
 								}
 								else {
 									printf("%s(%d):[%s]data=%d\n", __FILE__, __LINE__, __FUNCTION__, (char*)data);

@@ -31,7 +31,7 @@ public:
 		int ret = 0;
 		if (m_server != NULL) return -1;
 		if (m_path.size() == 0) return -2;
-		m_server = new CLocalSocket();
+		m_server = new CSocket();
 		if (m_server == NULL) return -3;
 		ret = m_server->Init(CSockParam(m_path, SOCK_ISSERVER));
 		if (ret != 0) return -4;
@@ -63,7 +63,7 @@ public:
 	}
 	template<typename _FUNCTION_, typename... _ARGS_>
 	int AddTask(_FUNCTION_ func, _ARGS_... args) {
-		static thread_local CLocalSocket client;
+		static thread_local CSocket client;
 		int ret = 0;
 		if (client == -1) {
 			ret = client.Init(CSockParam(m_path, 0));
@@ -82,6 +82,8 @@ public:
 		}
 		return 0;
 	}
+
+	size_t Size() const { return m_threads.size(); }
 private:
 	int TaskDispatch() {
 		while (m_epoll != -1) {
