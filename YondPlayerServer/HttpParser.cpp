@@ -97,8 +97,7 @@ int CHttpParser::OnMessageComplete(http_parser* parser)
 {
 	return ((CHttpParser*)parser->data)->OnMessageComplete();
 }
-
-
+//----------
 int CHttpParser::OnMessageBegin()
 {
 	return 0;
@@ -136,7 +135,7 @@ int CHttpParser::OnHeadersComplete()
 int CHttpParser::OnBody(const char* at, size_t length)
 {
 	m_body = Buffer(at, length);
-	
+
 	return 0;
 }
 
@@ -144,4 +143,85 @@ int CHttpParser::OnMessageComplete()
 {
 	m_complete = true;
 	return 0;
+}
+
+UrlParser::UrlParser(const Buffer& url)
+{
+	m_url = url;
+}
+
+int UrlParser::Parser()
+{
+	//three step: protocol  domain  port uri
+	//parse protocol
+	const char* pos = m_url;
+	const char* target = strstr(pos, "://");
+	if (target == NULL) return -1;
+	m_protocol = Buffer(pos, target);
+	//parse domain and port
+	pos = target + 3;
+	target = strchr(pos, '/');
+	if (target == NULL) {
+		if (m_protocol.size() + 3 == m_url.size())
+			return -2;
+		m_host = pos;
+		return 0;
+	}
+	Buffer value = Buffer(pos, target);
+	if (value.size() == 0) return -3;
+	target = strchr(value, ':');
+	if (target != NULL) {
+		m_host = Buffer(value, target);
+		//m_port = atoi(Buffer(target + 1));
+		m_port = atoi(Buffer(target + 1, (char*)value + value.size()));
+	}
+	else {
+		m_host = value;
+	}
+	pos = strchr(pos, '/');
+	//parse uri
+	target = strchr(pos, '?');
+	if (target == NULL) {
+		m_uri = pos;
+		return 0;
+	}
+	else {
+		m_uri = Buffer(pos, target);
+		//parse key & value
+		pos = target + 1;
+		const char* t;
+		do {
+			target = strchr(pos, '&');
+			if (target == NULL) {
+				t = strchr(pos, '=');
+				if (t == NULL) return -4;
+				m_values[Buffer(pos, t)] = Buffer(t + 1);
+			}
+			else {
+				Buffer kv(pos, target);
+				t = strchr(kv, '=');
+				if (t == NULL) return -4;
+				m_values[Buffer(kv, t)] = Buffer(t + 1, kv + kv.size());
+				pos = target + 1;
+			}
+		} while (target != NULL);
+	}
+
+	return 0;
+}
+
+Buffer UrlParser::operator[](const Buffer& name)
+{
+	auto it = m_values.find(name);
+	if (it == m_values.end()) return Buffer();
+	return it->second;
+}
+
+void UrlParser::SetUrl(const Buffer& url)
+{
+	m_url = url;
+	m_protocol = "";
+	m_host = "";
+	m_port = 80;
+	m_values.clear();
 }

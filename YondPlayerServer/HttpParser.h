@@ -54,3 +54,22 @@ protected:
 	int OnMessageComplete();
 };
 
+class UrlParser {
+public:
+	UrlParser(const Buffer& url);
+	~UrlParser() {}
+	int Parser();
+	Buffer operator[] (const Buffer& name);
+	Buffer Protocol() const { return m_protocol; }
+	Buffer Host() const { return m_host; }
+	int Port() const { return m_port; }
+	void SetUrl(const Buffer& url);
+
+private:
+	Buffer m_url;
+	Buffer m_protocol;
+	Buffer m_host;
+	Buffer m_uri;
+	int m_port;
+	std::map<Buffer, Buffer> m_values;
+};
