@@ -189,9 +189,15 @@ int http_test() {
 	return 0;
 }
 
+int sql_test() {
+	return 0;
+}
+
 int main()
 {
-	int ret = http_test();
+	int ret = 0;
+	//int ret = http_test();
+	ret = sql_test();
 	printf("ret = %d\n", ret);
 	return ret;
 }
