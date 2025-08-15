@@ -41,7 +41,7 @@ public:
 	//关闭连接
 	virtual int Close() = 0;
 	//是否连接
-	virtual int IsConnect() = 0;
+	virtual bool IsConnect() = 0;
 };
 
 class _Table_ {
@@ -54,11 +54,12 @@ public:
 	virtual Buffer Drop() = 0;
 	//crud
 	virtual Buffer Insert(const _Table_& values) = 0;
-	virtual Buffer Delete() = 0;
-	virtual Buffer Modify() = 0;	//TODO:optimize args
+	virtual Buffer Delete(const _Table_& values) = 0;
+	virtual Buffer Modify(const _Table_& values) = 0;	//TODO:optimize args
 	virtual Buffer Query() = 0;
 	//creat a class base on table
 	virtual PTable Copy() const = 0;
+	virtual void ClearFieldUsed() = 0;
 public:
 	//get table full name
 	virtual operator const Buffer() const = 0;
@@ -69,6 +70,32 @@ public:
 	FieldArray FieldDefine;		//save result
 	FieldMap Fields;		//列定义的映射表
 
+};
+
+enum {
+	SQL_INSERT = 1,		//插入的列
+	SQL_MODIFY = 2,		//修改的列
+	SQL_CONDITION = 4,	//查询的条件
+};
+
+enum {
+	NOT_NULL = 1,
+	DEFAULT = 2,
+	UNIQUE = 4,
+	PRIMARY_KEY = 8,
+	CHECK = 16,
+	AUTOINCREMENT = 32
+};
+
+using SqlType = enum {
+	TYPE_NULL = 0,
+	TYPE_BOOL = 1,
+	TYPE_INT = 2,
+	TYPE_DATETIME = 4,
+	TYPE_REAL = 8,
+	TYPE_VARCHAR = 16,
+	TYPE_TEXT = 32,
+	TYPE_BLOB = 64
 };
 
 class _Field_ {
@@ -91,7 +118,7 @@ public:
 		}
 		return *this;
 	}
-	virtual ~_Field_() {}
+	~_Field_() {}
 public:
 	virtual Buffer Craete() = 0;
 	virtual void LoadFromStr(const Buffer& str) = 0;
@@ -107,4 +134,8 @@ public:
 	unsigned Attr;
 	Buffer Default;
 	Buffer Check;
+
+public:
+	//操作条件
+	unsigned Condition;
 };
