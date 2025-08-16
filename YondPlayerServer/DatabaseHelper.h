@@ -49,7 +49,7 @@ public:
 	_Table_() {}
 	virtual ~_Table_() {}
 	//返回创建的sql语句
-	virtual Buffer Creat() = 0;
+	virtual Buffer Create() = 0;
 	//delete
 	virtual Buffer Drop() = 0;
 	//crud
@@ -120,7 +120,7 @@ public:
 	}
 	~_Field_() {}
 public:
-	virtual Buffer Craete() = 0;
+	virtual Buffer Create() = 0;
 	virtual void LoadFromStr(const Buffer& str) = 0;
 	//use for where sql
 	virtual Buffer toEqualExp() const = 0;
@@ -139,3 +139,13 @@ public:
 	//操作条件
 	unsigned Condition;
 };
+
+#define DECLARE_TABLE_CLASS(name, base) class name:public base { \
+public: \
+virtual PTable Copy() const {return PTable(new name(*this));} \
+name():base(){Name=#name;
+
+#define DECLARE_FIELD(ntype,name,attr,type,size,default_,check) \
+{PField field(new _sqlite3_field_(ntype, #name, attr, type, size, default_, check));FieldDefine.push_back(field);Fields[#name] = field; }
+
+#define DECLARE_TABLE_CLASS_EDN() }};

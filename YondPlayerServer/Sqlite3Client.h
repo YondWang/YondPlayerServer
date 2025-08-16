@@ -63,7 +63,7 @@ public:
 	_sqlite3_table_(const _sqlite3_table_& table);
 	virtual ~_sqlite3_table_() {}
 	//返回创建的sql语句
-	virtual Buffer Creat();
+	virtual Buffer Create();
 	//delete
 	virtual Buffer Drop();
 	//crud
@@ -86,8 +86,18 @@ class _sqlite3_field_ :
 {
 public:
 	_sqlite3_field_();
-	virtual ~_sqlite3_field_() {}
-	virtual Buffer Craete();
+	_sqlite3_field_(
+		int ntype,
+		const Buffer& name,
+		unsigned attr,
+		const Buffer& type,
+		const Buffer& size,
+		const Buffer& default_,
+		const Buffer& check
+	);
+	_sqlite3_field_(const _sqlite3_field_& field);
+	virtual ~_sqlite3_field_();
+	virtual Buffer Create();
 	virtual void LoadFromStr(const Buffer& str);
 	//use for where sql
 	virtual Buffer toEqualExp() const;
