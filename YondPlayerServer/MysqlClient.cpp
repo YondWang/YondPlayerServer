@@ -112,7 +112,7 @@ _mysql_table_::_mysql_table_(const _mysql_table_& table)
 
 Buffer _mysql_table_::Create() {
 	//CREATE TABLE IF NOT EXISTS 表全名 (列定义,...),PRIMARY KEY `主键列名` , UNIQUE INDEX `列名_UNIQUE` (列名 ASC) VISIBLE );
-	Buffer sql = "CREATE TABLE IF NOT EXEISTS " + (Buffer)*this + "(\r\n";
+	Buffer sql = "CREATE TABLE IF NOT EXISTS " + (Buffer)*this + "(\r\n";
 	for (unsigned i = 0; i < FieldDefine.size(); i++) {
 		if (i > 0) sql += ", \r\n";
 		sql += FieldDefine[i]->Create();

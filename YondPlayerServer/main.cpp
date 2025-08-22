@@ -290,7 +290,7 @@ int mysql_test() {
 	args["user"] = "root";
 	args["passwd"] = "20010429";
 	args["port"] = 3306;
-	args["db"] = "edoyun";
+	args["db"] = "YondTest";
 	ret = pClient->Connect(args);
 	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 	ret = pClient->Exec(test.Create());
@@ -308,11 +308,19 @@ int mysql_test() {
 	Result result;
 	ret = pClient->Exec(test.Query(), result, test);
 	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
-	ret = pClient->Exec(test.Drop());
+	//ret = pClient->Exec(test.Drop());
 	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 	ret = pClient->Close();
 	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
 	//getchar();
+	return 0;
+}
+
+#include "Crypto.h"
+int crypto_test() {
+	Buffer data = "abcdef";
+	data = Crypto::MD5(data);
+	printf("%s\r\n", (char*)data);
 	return 0;
 }
 
@@ -322,6 +330,7 @@ int main()
 	//int ret = http_test();
 	//ret = sql_test();
 	mysql_test();
+	//crypto_test();
 	printf("ret = %d\n", ret);
 	return ret;
 }
