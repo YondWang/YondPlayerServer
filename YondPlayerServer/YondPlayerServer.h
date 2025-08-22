@@ -2,6 +2,35 @@
 #include "Server.h"
 #include <map>
 #include "Logger.h"
+#include "HttpParser.h"
+#include "Crypto.h"
+#include "MysqlClient.h"
+
+DECLARE_TABLE_CLASS(yondLogin_user_mysql, _mysql_table_)
+DECLARE_MYSQL_FIELD(TYPE_INT, user_id, NOT_NULL | PRIMARY_KEY | AUTOINCREMENT, "INTEGER", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_VARCHAR, user_qq, NOT_NULL, "VARCHAR", "(15)", "", "")  
+DECLARE_MYSQL_FIELD(TYPE_VARCHAR, user_phone, DEFAULT, "VARCHAR", "(11)", "'18888888888'", "")  
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_name, NOT_NULL, "TEXT", "", "", "")    
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_nick, NOT_NULL, "TEXT", "", "", "")    
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_wechat, DEFAULT, "TEXT", "", "NULL", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_wechat_id, DEFAULT, "TEXT", "", "NULL", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_address, DEFAULT, "TEXT", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_province, DEFAULT, "TEXT", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_country, DEFAULT, "TEXT", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_INT, user_age, DEFAULT | CHECK, "INTEGER", "", "18", "")
+DECLARE_MYSQL_FIELD(TYPE_INT, user_male, DEFAULT, "BOOL", "", "1", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_flags, DEFAULT, "TEXT", "", "0", "")
+DECLARE_MYSQL_FIELD(TYPE_REAL, user_experience, DEFAULT, "REAL", "", "0.0", "")
+DECLARE_MYSQL_FIELD(TYPE_INT, user_level, DEFAULT | CHECK, "INTEGER", "", "0", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_class_priority, DEFAULT, "TEXT", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_REAL, user_time_per_viewer, DEFAULT, "REAL", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_career, NONE, "TEXT", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_password, NOT_NULL, "TEXT", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_INT, user_birthday, NONE, "DATETIME", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_describe, NONE, "TEXT", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_education, NONE, "TEXT", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_INT, user_register_time, DEFAULT, "DATETIME", "", "LOCALTIME()", "")
+DECLARE_TABLE_CLASS_EDN()
 
 #define ERR_RETURN(ret, err) if(ret != 0) {TRACEE("ret = %d errno = %d msg = [%s]", ret, errno, strerror(errno)); return err;}
 #define WARN_CONTINUE(ret) if(ret != 0) {TRACEW("ret = %d msg = [%s]", ret, errno, strerror(errno)); continue;}
@@ -15,6 +44,12 @@ public:
 		
 	}
 	~CYondPlayerServer() {
+		if (m_db) {
+			CDatabaseClient* db = m_db;
+			m_db = NULL;
+			db->Close();
+			delete db;
+		}
 		m_epoll.Close();
 		m_pool.Close();
 		for (auto it : m_mapClients) {
@@ -28,16 +63,30 @@ public:
 	virtual int BusinessProcess(CProcess* proc) {
 		using namespace std::placeholders;
 		int ret = 0;
+		m_db = new CMysqlClient();
+		if (m_db == NULL) {
+			TRACEE("no more memory!");
+			return -1;
+		}
+		KeyValue args;
+		args["host"] = "localhost";
+		args["user"] = "root";
+		args["passwd"] = "20010429";
+		args["port"] = 3306;
+		args["db"] = "YondTest";
+		ret = m_db->Connect(args);
+		ERR_RETURN(ret, -2);
 		ret = SetConnectedCallback(&CYondPlayerServer::Connected, this, _1);
-		ERR_RETURN(ret, -1);
+		ERR_RETURN(ret, -3);
 		ret = SetRecvCallback(&CYondPlayerServer::Received, this, _1, _2);
+		ERR_RETURN(ret, -4);
 		ret = m_epoll.Create(m_count);
-		ERR_RETURN(ret, -2);
+		ERR_RETURN(ret, -5);
 		ret = m_pool.Start(m_count);
-		ERR_RETURN(ret, -2);
+		ERR_RETURN(ret, -6);
 		for (unsigned i = 0; i < m_count; i++) {
 			ret = m_pool.AddTask(&CYondPlayerServer::ThreadFunc, this);
-			ERR_RETURN(ret, -3);
+			ERR_RETURN(ret, -7);
 		}
 		int sock = 0;
 		sockaddr_in addrin;
@@ -54,16 +103,95 @@ public:
 			}
 			WARN_CONTINUE(ret);
 		}
-		return ret;
+		return 0;
 	}
 private:
 	int Connected(CSocketBase* pClient) {
+		//TODO:connect process, just simple print client info
+		sockaddr_in* paddr = *pClient;
+		TRACEI("client connected addr: %s port:%d", inet_ntoa(paddr->sin_addr), paddr->sin_port);
 		return 0;
 	}
 	int Received(CSocketBase* pClient, const Buffer& data) {
+		//TODO:main process here
+		//http parase
+		int ret = 0;
+		ret = HttpParser(data);
+		Buffer response;
+		if (ret != 0) {
+			TRACEE("http parser failed!%d", ret);
+			return 0;
+		}
+		else {
+
+		}
+		ret = pClient->Send(response);
+		if (ret != 0) {
+			TRACEE("http response failed!%d", ret);
+		}
+		else {
+			TRACEI("http response success!%d", ret);
+		}
 		return 0;
 	}
+	int HttpParser(const Buffer& data) {
+		CHttpParser parser;
+		size_t size = parser.Parser(data);
+		if (size == 0 || (parser.Errno() != 0)) {
+			TRACEE("size %llu errno:%u", size, parser.Errno());
+			return -1;
+		}
+		if (parser.Method() == HTTP_GET) {
+			//get process
+			UrlParser url("https://172.24.126.20" + parser.Url());
+			int ret = url.Parser();
+			if (ret != 0) {
+				TRACEE("ret = %d url [%s]", ret, "https://172.24.126.20" + parser.Url());
+				return -2;
+			}
+			Buffer uri = url.Uri();
+			if (uri == "login") {
+				//handle login
+				Buffer time = url["time"];
+				Buffer salt = url["salt"];
+				Buffer user = url["user"];
+				Buffer sign = url["sign"];
+				TRACEI("time %s salt %s user %s sign %s", (char*)time, (char*)salt, (char*)user, (char*)size);
+				//db find
+				yondLogin_user_mysql dbuser;
+				Result result;
+				Buffer sql = dbuser.Query("user_name=\"" + user + "\"");
+				ret = m_db->Exec(sql, result, dbuser);
+				if (ret != 0) {
+					TRACEE("sql = %s ret = %d", (char*)sql, ret);
+					return -3;
+				}
+				if (result.size() == 0) {
+					TRACEE("no result sql = %s ret = %d", (char*)sql, ret);
+					return -4;
+				}
+				if (result.size() != 1) {
+					TRACEE("more than one sql = %s ret = %d", (char*)sql, ret);
+					return -5;
+				}
+				auto user1 = result.front();
+				Buffer pwd = *user1->Fields["user_password"]->Value.String;
+				TRACEI("password = %s", (char*)pwd);
+				//login request identify
+				const char* MD5_KEY = "*&^%$#@b.v+h-b*g/h@n!h#n$d^ssx,.kl<kl";
+				Buffer md5str = time + MD5_KEY + pwd + salt;
+				Buffer md5 = Crypto::MD5(md5str);
+				TRACEI("password = %s", (char*)md5);
+				if (md5 == sign) {
+					return 0;
+				}
+				return -6;
+			}
+		}
+		else if (parser.Method() == HTTP_POST) {
 
+		}
+	}
 private:
 	int ThreadFunc() {
 		int ret = 0;
@@ -98,4 +226,5 @@ private:
 	CThreadPool m_pool;
 	unsigned m_count;
 	std::map<int, CSocketBase*> m_mapClients;
+	CDatabaseClient* m_db;
 };

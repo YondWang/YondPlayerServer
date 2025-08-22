@@ -64,7 +64,7 @@ public:
 	Buffer Host() const { return m_host; }
 	int Port() const { return m_port; }
 	void SetUrl(const Buffer& url);
-
+	const Buffer Uri() const { return m_uri; }
 private:
 	Buffer m_url;
 	Buffer m_protocol;

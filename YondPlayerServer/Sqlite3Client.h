@@ -70,7 +70,7 @@ public:
 	virtual Buffer Insert(const _Table_& values);
 	virtual Buffer Delete(const _Table_& values);
 	virtual Buffer Modify(const _Table_& values);	//TODO:optimize args
-	virtual Buffer Query();
+	virtual Buffer Query(const Buffer& condition = "");
 	//creat a class base on table
 	virtual PTable Copy() const;
 	virtual void ClearFieldUsed();

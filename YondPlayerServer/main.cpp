@@ -327,9 +327,10 @@ int crypto_test() {
 int main()
 {
 	int ret = 0;
+	ret = Main();
 	//int ret = http_test();
 	//ret = sql_test();
-	mysql_test();
+	//mysql_test();
 	//crypto_test();
 	printf("ret = %d\n", ret);
 	return ret;

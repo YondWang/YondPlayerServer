@@ -1,4 +1,5 @@
 ﻿#include "MysqlClient.h"
+#include "Logger.h"
 #include <sstream>
 
 int CMysqlClient::Connect(const KeyValue& args) {
@@ -12,14 +13,12 @@ int CMysqlClient::Connect(const KeyValue& args) {
 	);
 	if ((ret == NULL) && (mysql_errno(&m_db) != 0)) {
 		printf("%d\n", mysql_errno(&m_db));
+		TRACEE("%d %s", mysql_errno(&m_db), mysql_error(&m_db));
 		mysql_close(&m_db);
 		bzero(&m_db, sizeof(m_db));
 		return -3;
 	}
-	/*if (args.at("db").size() > 0) {
-		int ret = Exec("use " + args.at("db") + " ;");
-		if (ret != 0) return -4;
-	}*/
+	
 	m_bInit = true;
 	return 0;
 }
@@ -29,6 +28,7 @@ int CMysqlClient::Exec(const Buffer& sql) {
 	int ret = mysql_real_query(&m_db, sql, sql.size());
 	if (ret != 0) {
 		printf("%s %d\n",__FUNCTION__,  mysql_errno(&m_db));
+		TRACEE("%d %s", mysql_errno(&m_db), mysql_error(&m_db));
 		return -2;
 	}
 	return 0;
@@ -39,6 +39,7 @@ int CMysqlClient::Exec(const Buffer sql, Result& result, const _Table_& table) {
 	int ret = mysql_real_query(&m_db, sql, sql.size());
 	if (ret != 0) {
 		printf("%s %d\n", __FUNCTION__, mysql_errno(&m_db));
+		TRACEE("%d %s", mysql_errno(&m_db), mysql_error(&m_db));
 		return -2;
 	}
 	MYSQL_RES* res = mysql_store_result(&m_db);
@@ -61,6 +62,7 @@ int CMysqlClient::StartTransaction() {
 	int ret = mysql_real_query(&m_db, "BEGIN", 6);
 	if (ret != 0) {
 		printf("%s %d\n", __FUNCTION__, mysql_errno(&m_db));
+		TRACEE("%d %s", mysql_errno(&m_db), mysql_error(&m_db));
 		return -2;
 	}
 	return 0;
@@ -71,6 +73,7 @@ int CMysqlClient::CommitTransaction() {
 	int ret = mysql_real_query(&m_db, "COMMIT", 7);
 	if (ret != 0) {
 		printf("%s %d\n", __FUNCTION__, mysql_errno(&m_db));
+		TRACEE("%d %s", mysql_errno(&m_db), mysql_error(&m_db));
 		return -2;
 	}
 	return 0;
@@ -81,6 +84,7 @@ int CMysqlClient::RollbackTransaction() {
 	int ret = mysql_real_query(&m_db, "ROLLBACK", 9);
 	if (ret != 0) {
 		printf("%s %d\n", __FUNCTION__, mysql_errno(&m_db));
+		TRACEE("%d %s", mysql_errno(&m_db), mysql_error(&m_db));
 		return -2;
 	}
 	return 0;
@@ -203,13 +207,17 @@ Buffer _mysql_table_::Modify(const _Table_& values)	//TODO:optimize args
 	return sql;
 }
 
-Buffer _mysql_table_::Query() {
+Buffer _mysql_table_::Query(const Buffer& condition) {
 	Buffer sql = "SELECT ";
 	for (size_t i = 0; i < FieldDefine.size(); i++) {
 		if (i > 0) sql += ',';
 		sql += '`' + FieldDefine[i]->Name + "` ";
 	}
-	sql += " FROM " + (Buffer)*this + ";";
+	sql += " FROM " + (Buffer)*this + " ";
+	if (condition.size() > 0) {
+		sql += " WHERE " + condition;
+	}
+	sql += ";";
 	printf("sql = %s", (char*)sql);
 	return sql;
 }
