@@ -262,8 +262,58 @@ int sql_test() {
 	return 0;
 }
 
-int mysql_test() {
+#include "MysqlClient.h"
+DECLARE_TABLE_CLASS(user_test_mysql, _mysql_table_)
+DECLARE_MYSQL_FIELD(TYPE_INT, user_id, NOT_NULL | PRIMARY_KEY | AUTOINCREMENT, "INTEGER", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_VARCHAR, user_qq, NOT_NULL, "VARCHAR", "(15)", "", "")
+DECLARE_MYSQL_FIELD(TYPE_VARCHAR, user_phone, NOT_NULL | DEFAULT, "VARCHAR", "(12)", "18888888888", "")
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_name, 0, "TEXT", "", "", "")
+DECLARE_TABLE_CLASS_EDN()
 
+int mysql_test() {
+	user_test_mysql test, value;
+	printf("create:%s\n", (char*)test.Create());
+	printf("Delete:%s\n", (char*)test.Delete(test));
+	value.Fields["user_qq"]->LoadFromStr("1817619619");
+	value.Fields["user_qq"]->Condition = SQL_INSERT;
+	printf("Insert:%s\n", (char*)test.Insert(value));
+	value.Fields["user_qq"]->LoadFromStr("123456789");
+	value.Fields["user_qq"]->Condition = SQL_MODIFY;
+	printf("Modify:%s\n", (char*)test.Modify(value));
+	printf("Query:%s\n", (char*)test.Query());
+	printf("Drop:%s\n", (char*)test.Drop());
+	//getchar();
+	int ret = 0;
+	CDatabaseClient* pClient = new CMysqlClient();
+	KeyValue args;
+	args["host"] = "localhost";
+	args["user"] = "root";
+	args["passwd"] = "20010429";
+	args["port"] = 3306;
+	args["db"] = "edoyun";
+	ret = pClient->Connect(args);
+	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+	ret = pClient->Exec(test.Create());
+	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+	ret = pClient->Exec(test.Delete(value));
+	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+	value.Fields["user_qq"]->LoadFromStr("1817619619");
+	value.Fields["user_qq"]->Condition = SQL_INSERT;
+	ret = pClient->Exec(test.Insert(value));
+	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+	value.Fields["user_qq"]->LoadFromStr("123456789");
+	value.Fields["user_qq"]->Condition = SQL_MODIFY;
+	ret = pClient->Exec(test.Modify(value));
+	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+	Result result;
+	ret = pClient->Exec(test.Query(), result, test);
+	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+	ret = pClient->Exec(test.Drop());
+	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+	ret = pClient->Close();
+	printf("%s(%d):<%s> ret = %d\n", __FILE__, __LINE__, __FUNCTION__, ret);
+	//getchar();
+	return 0;
 }
 
 int main()
@@ -275,3 +325,4 @@ int main()
 	printf("ret = %d\n", ret);
 	return ret;
 }
+

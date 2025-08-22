@@ -6,7 +6,7 @@
 #include <arpa/inet.h>
 #include <string>
 #include <fcntl.h>
-#include "public.h"
+#include "Public.h"
 
 enum SockAttr {
 	SOCK_ISSERVER = 1,	//是否服务器	1是 0客户端

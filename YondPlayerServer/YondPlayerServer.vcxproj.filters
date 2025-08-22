@@ -11,6 +11,10 @@
     <ClCompile Include="sqlite3\sqlite3.c">
       <Filter>Sqlite3</Filter>
     </ClCompile>
+    <ClCompile Include="DatabaseHelper.cpp" />
+    <ClCompile Include="Sqlite3Client.cpp" />
+    <ClCompile Include="MysqlClient.cpp" />
+    <ClCompile Include="Crypto.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Epoll.h" />
@@ -30,6 +34,11 @@
     <ClInclude Include="sqlite3\sqlite3ext.h">
       <Filter>Sqlite3</Filter>
     </ClInclude>
+    <ClInclude Include="DatabaseHelper.h" />
+    <ClInclude Include="Public.h" />
+    <ClInclude Include="Sqlite3Client.h" />
+    <ClInclude Include="MysqlClient.h" />
+    <ClInclude Include="Crypto.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Sqlite3">
