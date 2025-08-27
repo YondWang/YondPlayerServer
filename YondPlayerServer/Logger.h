@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Thread.h"
 #include "Epoll.h"
 #include "Socket.h"
@@ -35,7 +35,7 @@ public:
 		return *this;
 	}
 private:
-	bool bAuto;	//Ĭ����false ��ʽ��־����Ϊtrue
+	bool bAuto;	//Ä¬ÈÏÊÇfalse Á÷Ê½ÈÕÖ¾£¬ÔòÎªtrue
 	Buffer m_buf;
 };
 
@@ -74,7 +74,7 @@ public:
 			Close();
 			return -4;
 		}
-		ret = m_server->Init(CSockParam("./log/server.sock", (int)SOCK_ISSERVER));
+		ret = m_server->Init(CSockParam("./log/server.sock", (int)SOCK_ISSERVER | SOCK_ISREUSE));
 		if (ret != 0) {
 			Close();
 			return -5;

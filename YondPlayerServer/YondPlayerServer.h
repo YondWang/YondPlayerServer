@@ -1,35 +1,36 @@
-#pragma once
+﻿#pragma once
 #include "Server.h"
 #include <map>
 #include "Logger.h"
 #include "HttpParser.h"
 #include "Crypto.h"
 #include "MysqlClient.h"
+#include "jsoncpp/json.h"
 
 DECLARE_TABLE_CLASS(yondLogin_user_mysql, _mysql_table_)
 DECLARE_MYSQL_FIELD(TYPE_INT, user_id, NOT_NULL | PRIMARY_KEY | AUTOINCREMENT, "INTEGER", "", "", "")
-DECLARE_MYSQL_FIELD(TYPE_VARCHAR, user_qq, NOT_NULL, "VARCHAR", "(15)", "", "")  
-DECLARE_MYSQL_FIELD(TYPE_VARCHAR, user_phone, DEFAULT, "VARCHAR", "(11)", "'18888888888'", "")  
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_name, NOT_NULL, "TEXT", "", "", "")    
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_nick, NOT_NULL, "TEXT", "", "", "")    
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_wechat, DEFAULT, "TEXT", "", "NULL", "")
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_wechat_id, DEFAULT, "TEXT", "", "NULL", "")
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_address, DEFAULT, "TEXT", "", "", "")
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_province, DEFAULT, "TEXT", "", "", "")
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_country, DEFAULT, "TEXT", "", "", "")
-DECLARE_MYSQL_FIELD(TYPE_INT, user_age, DEFAULT | CHECK, "INTEGER", "", "18", "")
-DECLARE_MYSQL_FIELD(TYPE_INT, user_male, DEFAULT, "BOOL", "", "1", "")
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_flags, DEFAULT, "TEXT", "", "0", "")
-DECLARE_MYSQL_FIELD(TYPE_REAL, user_experience, DEFAULT, "REAL", "", "0.0", "")
-DECLARE_MYSQL_FIELD(TYPE_INT, user_level, DEFAULT | CHECK, "INTEGER", "", "0", "")
-DECLARE_MYSQL_FIELD(TYPE_TEXT, user_class_priority, DEFAULT, "TEXT", "", "", "")
-DECLARE_MYSQL_FIELD(TYPE_REAL, user_time_per_viewer, DEFAULT, "REAL", "", "", "")
+DECLARE_MYSQL_FIELD(TYPE_VARCHAR, user_qq, NOT_NULL, "VARCHAR", "(15)", "", "")  //QQ号
+//DECLARE_MYSQL_FIELD(TYPE_VARCHAR, user_phone, DEFAULT, "VARCHAR", "(11)", "'18888888888'", "")  //手机
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_name, NOT_NULL, "TEXT", "", "", "")    //姓名
+DECLARE_MYSQL_FIELD(TYPE_TEXT, user_nick, NOT_NULL, "TEXT", "", "", "")    //昵称
+//DECLARE_MYSQL_FIELD(TYPE_TEXT, user_wechat, DEFAULT, "TEXT", "", "NULL", "")
+//DECLARE_MYSQL_FIELD(TYPE_TEXT, user_wechat_id, DEFAULT, "TEXT", "", "NULL", "")
+//DECLARE_MYSQL_FIELD(TYPE_TEXT, user_address, DEFAULT, "TEXT", "", "", "")
+//DECLARE_MYSQL_FIELD(TYPE_TEXT, user_province, DEFAULT, "TEXT", "", "", "")
+//DECLARE_MYSQL_FIELD(TYPE_TEXT, user_country, DEFAULT, "TEXT", "", "", "")
+//DECLARE_MYSQL_FIELD(TYPE_INT, user_age, DEFAULT | CHECK, "INTEGER", "", "18", "")
+//DECLARE_MYSQL_FIELD(TYPE_INT, user_male, DEFAULT, "BOOL", "", "1", "")
+//DECLARE_MYSQL_FIELD(TYPE_TEXT, user_flags, DEFAULT, "TEXT", "", "0", "")
+//DECLARE_MYSQL_FIELD(TYPE_REAL, user_experience, DEFAULT, "REAL", "", "0.0", "")
+//DECLARE_MYSQL_FIELD(TYPE_INT, user_level, DEFAULT | CHECK, "INTEGER", "", "0", "")
+//DECLARE_MYSQL_FIELD(TYPE_TEXT, user_class_priority, DEFAULT, "TEXT", "", "", "")
+//DECLARE_MYSQL_FIELD(TYPE_REAL, user_time_per_viewer, DEFAULT, "REAL", "", "", "")
 DECLARE_MYSQL_FIELD(TYPE_TEXT, user_career, NONE, "TEXT", "", "", "")
 DECLARE_MYSQL_FIELD(TYPE_TEXT, user_password, NOT_NULL, "TEXT", "", "", "")
 DECLARE_MYSQL_FIELD(TYPE_INT, user_birthday, NONE, "DATETIME", "", "", "")
 DECLARE_MYSQL_FIELD(TYPE_TEXT, user_describe, NONE, "TEXT", "", "", "")
 DECLARE_MYSQL_FIELD(TYPE_TEXT, user_education, NONE, "TEXT", "", "", "")
-DECLARE_MYSQL_FIELD(TYPE_INT, user_register_time, DEFAULT, "DATETIME", "", "LOCALTIME()", "")
+//DECLARE_MYSQL_FIELD(TYPE_INT, user_register_time, DEFAULT, "DATETIME", "", "LOCALTIME()", "")
 DECLARE_TABLE_CLASS_EDN()
 
 #define ERR_RETURN(ret, err) if(ret != 0) {TRACEE("ret = %d errno = %d msg = [%s]", ret, errno, strerror(errno)); return err;}
@@ -76,17 +77,20 @@ public:
 		args["db"] = "YondTest";
 		ret = m_db->Connect(args);
 		ERR_RETURN(ret, -2);
-		ret = SetConnectedCallback(&CYondPlayerServer::Connected, this, _1);
+		yondLogin_user_mysql user;
+		m_db->Exec(user.Create());
 		ERR_RETURN(ret, -3);
-		ret = SetRecvCallback(&CYondPlayerServer::Received, this, _1, _2);
+		ret = SetConnectedCallback(&CYondPlayerServer::Connected, this, _1);
 		ERR_RETURN(ret, -4);
-		ret = m_epoll.Create(m_count);
+		ret = SetRecvCallback(&CYondPlayerServer::Received, this, _1, _2);
 		ERR_RETURN(ret, -5);
-		ret = m_pool.Start(m_count);
+		ret = m_epoll.Create(m_count);
 		ERR_RETURN(ret, -6);
+		ret = m_pool.Start(m_count);
+		ERR_RETURN(ret, -7);
 		for (unsigned i = 0; i < m_count; i++) {
 			ret = m_pool.AddTask(&CYondPlayerServer::ThreadFunc, this);
-			ERR_RETURN(ret, -7);
+			ERR_RETURN(ret, -8);
 		}
 		int sock = 0;
 		sockaddr_in addrin;
@@ -117,17 +121,14 @@ private:
 		//http parase
 		int ret = 0;
 		ret = HttpParser(data);
-		Buffer response;
-		if (ret != 0) {
+		Buffer response = "";
+		if (ret != 0) {		//identify failed
 			TRACEE("http parser failed!%d", ret);
-			return 0;
 		}
-		else {
-
-		}
+		response = MakeResponse(ret);
 		ret = pClient->Send(response);
 		if (ret != 0) {
-			TRACEE("http response failed!%d", ret);
+			TRACEE("http response failed!%d [%s]", ret, (char*)response);
 		}
 		else {
 			TRACEI("http response success!%d", ret);
@@ -191,6 +192,34 @@ private:
 		else if (parser.Method() == HTTP_POST) {
 
 		}
+		return -7;
+	}
+
+	Buffer MakeResponse(int ret) {
+		Json::Value root;
+		if (ret != 0) {
+			root["status"] = ret;
+			root["message"] = "登录失败,可能是用户名或密码错误";
+		}
+		else {
+			root["message"] = "success";
+		}
+		Buffer json = root.toStyledString();
+		Buffer result = "HTTP/1.1 200 OK\r\n";
+		time_t t;
+		time(&t);
+		tm* ptm;
+		localtime(&t);
+		char temp[64] = "";
+		strftime(temp, sizeof(temp), "%a %d %b %G %T GMT\r\n", ptm);
+		Buffer Data = Buffer("Data: ") + temp;
+		Buffer Server = "Server: Yond/1.0\r\nContent-Type: text/html; charset=utf-8\r\nX-Frame-Options:DENY\r\n";
+		snprintf(temp, sizeof(temp), "%d", json.size());
+		Buffer Length = Buffer("Content-Length: ") + temp + "\r\n";
+		Buffer Stub = "X-Content-Type-Options: nosniff\r\nReferrer-Policy: same-origin\r\n\r\n";
+		result += Data + Server + Server + Length + Stub + json;
+		TRACEI("response: %s", (char*)result);
+		return result;
 	}
 private:
 	int ThreadFunc() {
@@ -209,7 +238,9 @@ private:
 						if (pClient) {
 							Buffer data;
 							ret = pClient->Recv(data);
-							WARN_CONTINUE(ret);
+							if (ret <= 0) { 
+								TRACEW("ret = %d msg = [%s]", ret, errno, strerror(errno)); continue; 
+							}
 							if (m_recvcallback) {
 								(*m_recvcallback)(pClient, data);
 							}

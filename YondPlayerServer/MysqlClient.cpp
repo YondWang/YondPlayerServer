@@ -28,7 +28,7 @@ int CMysqlClient::Exec(const Buffer& sql) {
 	int ret = mysql_real_query(&m_db, sql, sql.size());
 	if (ret != 0) {
 		printf("%s %d\n",__FUNCTION__,  mysql_errno(&m_db));
-		TRACEE("%d %s", mysql_errno(&m_db), mysql_error(&m_db));
+		TRACEE("%d %s %s", mysql_errno(&m_db), mysql_error(&m_db), (char*)sql);
 		return -2;
 	}
 	return 0;
@@ -116,9 +116,10 @@ _mysql_table_::_mysql_table_(const _mysql_table_& table)
 
 Buffer _mysql_table_::Create() {
 	//CREATE TABLE IF NOT EXISTS 表全名 (列定义,...),PRIMARY KEY `主键列名` , UNIQUE INDEX `列名_UNIQUE` (列名 ASC) VISIBLE );
-	Buffer sql = "CREATE TABLE IF NOT EXISTS " + (Buffer)*this + "(\r\n";
-	for (unsigned i = 0; i < FieldDefine.size(); i++) {
-		if (i > 0) sql += ", \r\n";
+	Buffer sql = "CREATE TABLE IF NOT EXISTS " + (Buffer)*this + " (\r\n";
+	for (unsigned i = 0; i < FieldDefine.size(); i++)
+	{
+		if (i > 0)sql += ",\r\n";
 		sql += FieldDefine[i]->Create();
 		if (FieldDefine[i]->Attr & PRIMARY_KEY) {
 			sql += ",\r\n PRIMARY KEY (`" + FieldDefine[i]->Name + "`)";
@@ -128,8 +129,7 @@ Buffer _mysql_table_::Create() {
 			sql += (Buffer)*FieldDefine[i] + " ASC) VISIBLE ";
 		}
 	}
-	sql += ");\r\n";
-	//printf("sql = %s", (char*)sql);
+	sql += ");";
 	return sql;
 }
 
@@ -304,20 +304,18 @@ _mysql_field_::~_mysql_field_()
 Buffer _mysql_field_::Create() {
 	Buffer sql = "`" + Name + "` " + Type + Size + " ";
 	if (Attr & NOT_NULL) {
-		sql += "NOT NULL ";
+		sql += "NOT NULL";
 	}
 	else {
-		sql += "NULL ";
+		sql += "NULL";
 	}
-	//BLOB TEXT GEOMETRY JSON不能有默认值
-	if ((Attr & DEFAULT) && (Default.size() > 0) && 
-		(Type != "BLOB ") && (Type != "TEXT ") && 
-		(Type != "GEOMETRY ") && (Type != "JSON ")) 
+	//BLOB TEXT GEOMETRY JSON²»ÄÜÓÐÄ¬ÈÏÖµµÄ
+	if ((Attr & DEFAULT) && (Default.size() > 0) && (Type != "BLOB") && (Type != "TEXT") && (Type != "GEOMETRY") && (Type != "JSON"))
 	{
-		sql += "DEFAULT \"" + Default + "\" ";
+		sql += " DEFAULT \"" + Default + "\" ";
 	}
-	//UNIQUE PRIMARY_KEY 外面处理
-	//CHECK mysql不支持
+	//UNIQUE PRIMARY_KEY ÍâÃæ´¦Àí
+	//CHECK mysql²»Ö§³Ö
 	if (Attr & AUTOINCREMENT) {
 		sql += " AUTO_INCREMENT ";
 	}

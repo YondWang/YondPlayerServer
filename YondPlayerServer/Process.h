@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "Function.h"
 #include <cstdio>
 #include <iostream>
@@ -50,7 +50,7 @@ public:
         return 0;
     }
 
-    int SendFD(int fd) {    //Ö÷½ø³ÌÍê³É
+    int SendFD(int fd) {    //Ã–Ã·Â½Ã¸Â³ÃŒÃÃªÂ³Ã‰
         struct msghdr msg;
         iovec iov[2];
         char buf[2][10] = { "YondWang", "edoyun" };
@@ -62,7 +62,7 @@ public:
         msg.msg_iov = iov;
         msg.msg_iovlen = 2;
 
-        //ÏÂÃæµÄÊý¾Ý²ÅÊÇÎÒÃÇÐèÒª´«µÝµÄ
+        //ÃÃ‚ÃƒÃ¦ÂµÃ„ÃŠÃ½Â¾ÃÂ²Ã…ÃŠÃ‡ÃŽÃ’ÃƒÃ‡ÃÃ¨Ã’ÂªÂ´Â«ÂµÃÂµÃ„
         cmsghdr* cmsg = (cmsghdr*)calloc(1, CMSG_LEN(sizeof(int)));
         if (cmsg == NULL) return -1;
         cmsg->cmsg_len = CMSG_LEN(sizeof(int));
@@ -114,19 +114,18 @@ public:
         return 0;
     }
 
-    int SendSocket(int fd, const sockaddr_in* addrin) {    //Ö÷½ø³ÌÍê³É
+    int SendSocket(int fd, const sockaddr_in* addrin) {    //Ã–Ã·Â½Ã¸Â³ÃŒÃÃªÂ³Ã‰
         struct msghdr msg;
-        iovec iov[2];
-        char buf[2][10] = { "YondWang", "edoyun" };
+        iovec iov;
+        char buf[20] = "";
+        bzero(&msg, sizeof(msg));
+        memcpy(buf, addrin, sizeof(sockaddr_in));
+        iov.iov_base = buf;
+        iov.iov_len = sizeof(buf);
+        msg.msg_iov = &iov;
+        msg.msg_iovlen = 1;
 
-        iov[0].iov_base = (void*)addrin;
-        iov[0].iov_len = sizeof(sockaddr_in);
-        iov[1].iov_base = buf[1];
-        iov[1].iov_len = sizeof(buf[1]);
-        msg.msg_iov = iov;
-        msg.msg_iovlen = 2;
-
-        //ÏÂÃæµÄÊý¾Ý²ÅÊÇÎÒÃÇÐèÒª´«µÝµÄ
+        //ÃÃ‚ÃƒÃ¦ÂµÃ„ÃŠÃ½Â¾ÃÂ²Ã…ÃŠÃ‡ÃŽÃ’ÃƒÃ‡ÃÃ¨Ã’ÂªÂ´Â«ÂµÃÂµÃ„
         cmsghdr* cmsg = (cmsghdr*)calloc(1, CMSG_LEN(sizeof(int)));
         if (cmsg == NULL) return -1;
         cmsg->cmsg_len = CMSG_LEN(sizeof(int));
@@ -150,14 +149,13 @@ public:
 
     int RecvSocket(int& fd, sockaddr_in* addrin) {
         msghdr msg;
-        iovec iov[2];
-        char buf[2][10] = { "", "" };
-        iov[0].iov_base = addrin;
-        iov[0].iov_len = sizeof(sockaddr_in);
-        iov[1].iov_base = buf[1];
-        iov[1].iov_len = sizeof(buf[1]);
-        msg.msg_iov = iov;
-        msg.msg_iovlen = 2;
+        iovec iov;
+        char buf[20] = "";
+        bzero(&msg, sizeof(msg));
+        iov.iov_base = addrin;
+        iov.iov_len = sizeof(buf);
+        msg.msg_iov = &iov;
+        msg.msg_iovlen = 1;
 
         cmsghdr* cmsg = (cmsghdr*)calloc(1, CMSG_LEN(sizeof(int)));
         if (cmsg == NULL) {
@@ -173,6 +171,7 @@ public:
             free(cmsg);
             return -2;
         }
+        memcpy(addrin, buf, sizeof(sockaddr_in));
         fd = *(int*)CMSG_DATA(cmsg);
         free(cmsg);
         return 0;

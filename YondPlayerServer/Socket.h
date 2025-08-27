@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -9,10 +9,11 @@
 #include "Public.h"
 
 enum SockAttr {
-	SOCK_ISSERVER = 1,	//ÊÇ·ñ·şÎñÆ÷	1ÊÇ 0¿Í»§¶Ë
-	SOCK_ISNONBLOCK = 2,	//ÊÜ·ñ×èÈû	1±íÊ¾·Ç×èÈû 0×èÈû
-	SOCK_ISUDP = 4,		//ÊÇ·ñUDP£¬1±íÊ¾UDP£¬0±íÊ¾TCP
-	SOCK_ISIP = 8,		//ÊÇ·ñÎªIPĞ­Òé£¬1±íÊ¾IPĞ­Òé£¬0±íÊ¾±¾µØÌ×½Ó×Ö
+	SOCK_ISSERVER = 1,	//ÃŠÃ‡Â·Ã±Â·Ã¾ÃÃ±Ã†Ã·	1ÃŠÃ‡ 0Â¿ÃÂ»Â§Â¶Ã‹
+	SOCK_ISNONBLOCK = 2,	//ÃŠÃœÂ·Ã±Ã—Ã¨ÃˆÃ»	1Â±Ã­ÃŠÂ¾Â·Ã‡Ã—Ã¨ÃˆÃ» 0Ã—Ã¨ÃˆÃ»
+	SOCK_ISUDP = 4,		//ÃŠÃ‡Â·Ã±UDPÂ£Â¬1Â±Ã­ÃŠÂ¾UDPÂ£Â¬0Â±Ã­ÃŠÂ¾TCP
+	SOCK_ISIP = 8,		//ÃŠÃ‡Â·Ã±ÃÂªIPÃÂ­Ã’Ã©Â£Â¬1Â±Ã­ÃŠÂ¾IPÃÂ­Ã’Ã©Â£Â¬0Â±Ã­ÃŠÂ¾Â±Â¾ÂµÃ˜ÃŒÃ—Â½Ã“Ã—Ã–
+	SOCK_ISREUSE = 16
 };
 
 class CSockParam {
@@ -21,14 +22,14 @@ public:
 		bzero(&addr_in, sizeof(addr_in));
 		bzero(&addr_un, sizeof(addr_un));
 		port = -1;
-		attr = 0;			//Ä¬ÈÏ¿Í»§¶Ë£¬×èÈû£¬tcp
+		attr = 0;			//Ã„Â¬ÃˆÃÂ¿ÃÂ»Â§Â¶Ã‹Â£Â¬Ã—Ã¨ÃˆÃ»Â£Â¬tcp
 	}
 	CSockParam(const Buffer& ip, short port, int attr) {
 		this->ip = ip;
 		this->port = port;
 		this->attr = attr;
 		addr_in.sin_family = AF_INET;
-		addr_in.sin_port = port;
+		addr_in.sin_port = htons(port);
 		addr_in.sin_addr.s_addr = inet_addr(ip);
 	}
 	CSockParam(const sockaddr_in* addrin, int attr) {
@@ -72,7 +73,7 @@ public:
 	//ip
 	Buffer ip;
 	short port;
-	//²Î¿¼SockAttr
+	//Â²ÃÂ¿Â¼SockAttr
 	int attr;
 };
 
@@ -82,14 +83,14 @@ public:
 		m_socket = -1;
 		m_status = 0;		//unfinish init
 	}
-	//´«µİÎö¹¹²Ù×÷
+	//Â´Â«ÂµÃÃÃ¶Â¹Â¹Â²Ã™Ã—Ã·
 	virtual ~CSocketBase() {
 		Close();
 	}
 public:
-	//³õÊ¼»¯ ·şÎñÆ÷ Ì×½Ó×Ö´´½¨ bind listen   ¿Í»§¶Ë Ì×½Ó×Ö´´½¨
+	//Â³ÃµÃŠÂ¼Â»Â¯ Â·Ã¾ÃÃ±Ã†Ã· ÃŒÃ—Â½Ã“Ã—Ã–Â´Â´Â½Â¨ bind listen   Â¿ÃÂ»Â§Â¶Ã‹ ÃŒÃ—Â½Ã“Ã—Ã–Â´Â´Â½Â¨
 	virtual int Init(const CSockParam& param) = 0;
-	//Á¬½Ó  ·şÎñÆ÷ accept ¿Í»§¶Ë connect   ¶ÔudpÕâÀï¿ÉÒÔºöÂÔ
+	//ÃÂ¬Â½Ã“  Â·Ã¾ÃÃ±Ã†Ã· accept Â¿ÃÂ»Â§Â¶Ã‹ connect   Â¶Ã”udpÃ•Ã¢Ã€Ã¯Â¿Ã‰Ã’Ã”ÂºÃ¶Ã‚Ã”
 	virtual int Link(CSocketBase** pClient = NULL) = 0;
 
 	virtual int Send(const Buffer& data) = 0;
@@ -112,9 +113,9 @@ public:
 	virtual operator sockaddr_in* () { return &m_param.addr_in; }
 
 protected:
-	//Ì×½Ó×ÖÃèÊö·û£¬Ä¬ÈÏÊÇ -1
+	//ÃŒÃ—Â½Ã“Ã—Ã–ÃƒÃ¨ÃŠÃ¶Â·Ã»Â£Â¬Ã„Â¬ÃˆÃÃŠÃ‡ -1
 	int m_socket;
-	//0Î´³õÊ¼»¯ 1³õÊ¼»¯Íê³É 2Á¬½ÓÍê³É 3ÒÑ¾­¹Ø±Õ
+	//0ÃÂ´Â³ÃµÃŠÂ¼Â»Â¯ 1Â³ÃµÃŠÂ¼Â»Â¯ÃÃªÂ³Ã‰ 2ÃÂ¬Â½Ã“ÃÃªÂ³Ã‰ 3Ã’Ã‘Â¾Â­Â¹Ã˜Â±Ã•
 	int m_status;
 	CSockParam m_param;
 };
@@ -124,12 +125,12 @@ public:	CSocket() : CSocketBase() {}
 	CSocket(int sock) : CSocketBase() {
 		m_socket = sock;
 	}
-	//´«µİÎö¹¹²Ù×÷
+	//Â´Â«ÂµÃÃÃ¶Â¹Â¹Â²Ã™Ã—Ã·
 	virtual ~CSocket() {
 		Close();
 	}
 public:
-	//³õÊ¼»¯ ·şÎñÆ÷ Ì×½Ó×Ö´´½¨ bind listen   ¿Í»§¶Ë Ì×½Ó×Ö´´½¨
+	//Â³ÃµÃŠÂ¼Â»Â¯ Â·Ã¾ÃÃ±Ã†Ã· ÃŒÃ—Â½Ã“Ã—Ã–Â´Â´Â½Â¨ bind listen   Â¿ÃÂ»Â§Â¶Ã‹ ÃŒÃ—Â½Ã“Ã—Ã–Â´Â´Â½Â¨
 	virtual int Init(const CSockParam& param) {
 		if (m_status != 0) return -1;
 		m_param = param;
@@ -146,6 +147,11 @@ public:
 			m_status = 2;
 		if (m_socket == -1) return -2;
 		int ret = 0;
+		if (m_param.attr & SOCK_ISREUSE) {
+			int option = 1;
+			ret = setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+			if (ret == -1) return -7;
+		}
 		if (m_param.attr & SOCK_ISSERVER) {
 			if (param.attr & SOCK_ISIP) {
 				ret = bind(m_socket, m_param.addrin(), sizeof(sockaddr_in));
@@ -168,7 +174,7 @@ public:
 			m_status = 1;
 		return 0;
 	}
-	//Á¬½Ó  ·şÎñÆ÷ accept ¿Í»§¶Ë connect   ¶ÔudpÕâÀï¿ÉÒÔºöÂÔ
+	//ÃÂ¬Â½Ã“  Â·Ã¾ÃÃ±Ã†Ã· accept Â¿ÃÂ»Â§Â¶Ã‹ connect   Â¶Ã”udpÃ•Ã¢Ã€Ã¯Â¿Ã‰Ã’Ã”ÂºÃ¶Ã‚Ã”
 	virtual int Link(CSocketBase** pClient = NULL) {
 		if (m_status <= 0 || m_socket == -1) return -1;
 		int ret = 0;
